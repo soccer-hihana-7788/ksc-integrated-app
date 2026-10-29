@@ -43,10 +43,11 @@ def get_gspread_client_for(account_key):
     if account_key in st.secrets:
         creds_dict = dict(st.secrets[account_key])
         if "private_key" in creds_dict:
+            # Secrets内の \n エスケープを実際の改行に置換
             creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
     else:
-        # フォールバック（ローカル環境用など）
+        # ローカル環境などのフォールバック
         key_file = "ksc-cash-app-7b96a6f1774a.json" if os.path.exists("ksc-cash-app-7b96a6f1774a.json") else "credentials.json"
         credentials = Credentials.from_service_account_file(key_file, scopes=scope)
     return gspread.authorize(credentials)
@@ -301,10 +302,11 @@ elif app_mode == "💰 KSC経費申請管理ツール":
             
             st.write("🖋️ **臨時コーチ署名**")
             sig_name = st.text_input("確認(臨時コーチ氏名)を入力してください")
+            canvas_number = st.session_state['form_key_suffix']
             canvas_result = st_canvas(
                 fill_color="rgba(255, 255, 255, 1)", stroke_width=2, stroke_color="#000",
                 background_color="#fff", height=120, width=300, drawing_mode="freedraw", 
-                key=f"canvas_{st.session_state['form_key_suffix']}"
+                key=f"canvas_{canvas_number}"
             )
             
             if st.form_submit_button("スプレッドシートに保存"):
