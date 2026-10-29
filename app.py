@@ -37,25 +37,19 @@ if not st.session_state["authenticated"]:
             st.error("IDまたはパスワードが正しくありません。")
     st.stop()
 
-# --- 2. Google Sheets 共通クライアント設定 ---
-@st.cache_resource
-def get_gspread_client():
+# --- 2. Google Sheets クライアント生成用ヘルパー ---
+def get_gspread_client_for(account_key):
     scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-    if "gcp_service_account" in st.secrets:
-        creds_dict = dict(st.secrets["gcp_service_account"])
+    if account_key in st.secrets:
+        creds_dict = dict(st.secrets[account_key])
         if "private_key" in creds_dict:
             creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
     else:
+        # フォールバック（ローカル環境用など）
         key_file = "ksc-cash-app-7b96a6f1774a.json" if os.path.exists("ksc-cash-app-7b96a6f1774a.json") else "credentials.json"
         credentials = Credentials.from_service_account_file(key_file, scopes=scope)
     return gspread.authorize(credentials)
-
-try:
-    gc = get_gspread_client()
-except Exception as e:
-    st.error(f"Googleスプレッドシート認証エラー: {e}")
-    st.stop()
 
 # --- 3. サイドバー：共通メニュー・ログアウト ---
 st.sidebar.title("📌 メニュー")
@@ -102,7 +96,8 @@ if app_mode == "ホーム（アプリ選択）":
 # ==========================================
 if app_mode == "⚽ サッカーチーム背番号管理ツール":
     try:
-        sh1 = gc.open_by_key("1yOFFntvApgvi-h6Z2bYFZbQevKNqAT82cfEitjD9Q14")
+        gc1 = get_gspread_client_for("gcp_service_account_soccer")
+        sh1 = gc1.open_by_key("1yOFFntvApgvi-h6Z2bYFZbQevKNqAT82cfEitjD9Q14")
     except Exception as e:
         st.error(f"背番号管理用スプレッドシート接続エラー: {e}")
         st.stop()
@@ -247,7 +242,8 @@ if app_mode == "⚽ サッカーチーム背番号管理ツール":
 # ==========================================
 elif app_mode == "💰 KSC経費申請管理ツール":
     try:
-        sh2 = gc.open_by_key("1yVYajQm6KeaoppB3KMaHismS-95NWxGGfie9DhDEEgk")
+        gc2 = get_gspread_client_for("gcp_service_account_expense")
+        sh2 = gc2.open_by_key("1yVYajQm6KeaoppB3KMaHismS-95NWxGGfie9DhDEEgk")
     except Exception as e:
         st.error(f"経費申請用スプレッドシート接続エラー: {e}")
         st.stop()
