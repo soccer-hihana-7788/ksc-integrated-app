@@ -3,5 +3,4 @@ pandas
 gspread
 google-auth
 streamlit-drawable-canvas
-streamlit-cookies-manager
 Pillow
