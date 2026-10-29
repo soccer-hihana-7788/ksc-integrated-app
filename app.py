@@ -9,44 +9,20 @@ import io
 import base64
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
-from streamlit_cookies_manager import EncryptedCookieManager
 
 # --- ページ設定 (アプリ全体で1回のみ) ---
 st.set_page_config(page_title="KSC 総合管理ポータル", layout="wide")
 
-# --- 1. 共通認証・Cookie管理の設定 ---
-cookies = EncryptedCookieManager(password="ksc_secure_password_2026_kuma")
-if not cookies.ready():
-    st.stop()
+# --- 1. 共通認証の設定 (セッション管理) ---
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
 
-def check_auth():
-    # セッションまたはCookieの認証状態を確認
-    if st.session_state.get("authenticated", False):
-        return True
-        
-    auth_status = cookies.get("auth_status")
-    expire_time_str = cookies.get("login_expire")
-    is_valid = False
-    
-    if auth_status == "ok" and expire_time_str:
-        try:
-            expire_time = datetime.fromisoformat(expire_time_str)
-            if datetime.now() < expire_time: 
-                is_valid = True
-        except: 
-            pass
-            
-    if is_valid:
-        st.session_state["authenticated"] = True
-        return True
-
-    # ログイン画面
+if not st.session_state["authenticated"]:
     st.title("🛡️ 総合ログインシステム")
     user_id = st.text_input("ログインID")
     password = st.text_input("パスワード", type="password")
     
     if st.button("ログイン"):
-        # アプリ①・②の認証情報を統合（必要に応じてsecrets等と併用してください）
         try:
             correct_user = st.secrets["auth"]["user_id"]
             correct_password = st.secrets["auth"]["password"]
@@ -55,17 +31,10 @@ def check_auth():
             correct_password = "kuma2019"
 
         if (user_id == correct_user and password == correct_password) or (user_id == "KSC" and password == "kuma2019"):
-            expire_date = datetime.now() + timedelta(hours=2)
-            cookies["auth_status"] = "ok"
-            cookies["login_expire"] = expire_date.isoformat()
-            cookies.save()
             st.session_state["authenticated"] = True
             st.rerun()
         else:
             st.error("IDまたはパスワードが正しくありません。")
-    return False
-
-if not check_auth():
     st.stop()
 
 # --- 2. Google Sheets 共通クライアント設定 ---
@@ -97,9 +66,6 @@ app_mode = st.sidebar.selectbox(
 
 st.sidebar.markdown("---")
 if st.sidebar.button("ログアウト"):
-    cookies["auth_status"] = ""
-    cookies["login_expire"] = ""
-    cookies.save()
     st.session_state["authenticated"] = False
     st.session_state.pop("current_user", None)
     st.rerun()
@@ -110,7 +76,7 @@ if st.sidebar.button("ログアウト"):
 # ==========================================
 if app_mode == "ホーム（アプリ選択）":
     st.title("⚽ KSC 総合管理ポータルへようこそ")
-    st.markdown("利用したいツールを下のselectbox、またはサイドバーから選択してください。")
+    st.markdown("利用したいツールを下のボタン、またはサイドバーから選択してください。")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -127,7 +93,6 @@ if app_mode == "ホーム（アプリ選択）":
             st.session_state["app_select"] = "💰 KSC経費申請管理ツール"
             st.rerun()
 
-    # セッションによる切り替え用
     if "app_select" in st.session_state:
         app_mode = st.session_state["app_select"]
 
@@ -293,15 +258,11 @@ elif app_mode == "💰 KSC経費申請管理ツール":
         selected_user = st.selectbox("あなたの氏名を選択してください", name_list)
         if st.button("決定"):
             st.session_state["current_user"] = selected_user
-            cookies["current_user"] = selected_user
-            cookies.save()
             st.rerun()
         st.stop()
 
     st.sidebar.write(f"ログイン中の氏名: **{st.session_state['current_user']}**")
     if st.sidebar.button("ユーザー変更"):
-        cookies["current_user"] = ""
-        cookies.save()
         st.session_state["current_user"] = None
         st.rerun()
 
