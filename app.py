@@ -44,8 +44,8 @@ def get_gspread_client():
     if "gcp_service_account" in st.secrets:
         creds_dict = dict(st.secrets["gcp_service_account"])
         if "private_key" in creds_dict:
-            # 秘密鍵の先頭や末尾にある不要な改行・空白を削除してパディングエラーを防ぐ
-            creds_dict["private_key"] = creds_dict["private_key"].strip()
+            # \n を実際の改行に置き換えてPEMパディングエラーを防ぐ
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
     else:
         key_file = "ksc-cash-app-7b96a6f1774a.json" if os.path.exists("ksc-cash-app-7b96a6f1774a.json") else "credentials.json"
