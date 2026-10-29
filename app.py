@@ -37,15 +37,20 @@ if not st.session_state["authenticated"]:
             st.error("IDまたはパスワードが正しくありません。")
     st.stop()
 
-# --- 2. Google Sheets 共通クライアント設定 ---
+# --- 2. Google Sheets 共通クライアント設定（改行コード自動修復付き） ---
 @st.cache_resource
 def get_gspread_client():
     scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
     if "gcp_service_account" in st.secrets:
         creds_dict = dict(st.secrets["gcp_service_account"])
         if "private_key" in creds_dict:
-            # \n を実際の改行に置き換えてPEMパディングエラーを防ぐ
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            pk = creds_dict["private_key"]
+            # Windows由来の改行コードやエスケープの乱れを完全に自動修正
+            pk = pk.replace("\r\n", "\n")
+            if "\\n" in pk:
+                pk = pk.replace("\\n", "\n")
+            creds_dict["private_key"] = pk.strip()
+            
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
     else:
         key_file = "ksc-cash-app-7b96a6f1774a.json" if os.path.exists("ksc-cash-app-7b96a6f1774a.json") else "credentials.json"
